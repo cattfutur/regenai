@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersive 3D Website</title>
+    <style>
+        :root {
+            --color-primary: #48C0D1;
+            --color-secondary: #25F6A3;
+            --color-background-dark: #210468;
+            --color-background-light: #E0D9D6;
+            --color-text-light: #FFFFFF;
+            --color-text-dark: #1A1A1A;
+            --color-accent: #25F6A3;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--color-text-light);
+            background-color: var(--color-background-dark);
+            overflow: hidden; 
+            overscroll-behavior-y: contain;
+        }
+
+        #main-container {
+            width: 100%;
+            height: 100vh; /* Fallback */
+            height: 100dvh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        .page-section {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center; /* Base centering for content within page-section */
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .page-section.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 1;
+        }
+        
+        .page-section.previous {
+            z-index: 0;
+        }
+
+        #three-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .content-overlay {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            background-color: rgba(0,0,0,0.3);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: left; /* MODIFICATION: General text alignment to left */
+        }
+
+        /* MODIFICATION: Re-center h1 and h2 within .content-overlay */
+        .content-overlay h1,
+        .content-overlay h2 {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5em;
+            font-weight: 700;
+            color: var(--color-text-light);
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            margin-bottom: 0.75em;
+            font-weight: 600;
+            color: var(--color-text-light);
+        }
+
+        p, .description {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5em;
+            max-width: 600px; /* Keeps paragraphs from becoming too wide, good for readability */
+            color: var(--color-background-light);
+            /* text-align: left; will be inherited from .content-overlay if applicable */
+        }
+        
+        .page-section#home .content-overlay { background-color: rgba(33, 4, 104, 0.5); }
+        .page-section#about .content-overlay { background-color: rgba(72, 192, 209, 0.3); }
+        .page-section#experiments .content-overlay { background-color: rgba(37, 246, 163, 0.2); }
+        .page-section#contact .content-overlay { background-color: rgba(224, 217, 214, 0.2); }
+
+        /* MODIFICATION: Center buttons within .cta-buttons */
+        .content-overlay .cta-buttons {
+            text-align: center;
+        }
+
+        .cta-buttons button {
+            background-color: var(--color-accent);
+            color: var(--color-background-dark);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .cta-buttons button:hover {
+            transform: scale(1.05);
+            background-color: #FFFFFF;
+        }
+        
+        .cta-buttons button.secondary {
+            background-color: transparent;
+            color: var(--color-accent);
+            border: 2px solid var(--color-accent);
+        }
+        .cta-buttons button.secondary:hover {
+            background-color: var(--color-accent);
+            color: var(--color-background-dark);
+        }
+
+        #experiments .experiments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 100%; 
+            max-width: 1200px; 
+            margin-top: 20px;
+        }
+
+        .experiment-item {
+            background-color: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--color-accent);
+        }
+
+        .experiment-item h3 {
+            font-size: 1.5rem;
+            color: var(--color-accent);
+            margin-bottom: 10px;
+        }
+
+        .experiment-item p {
+            font-size: 0.9rem;
+            color: var(--color-background-light);
+            margin-bottom: 15px;
+        }
+
+        .experiment-item a {
+            color: var(--color-secondary);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .experiment-item a:hover {
+            text-decoration: underline;
+        }
+
+        #contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;  
+            margin-right: auto; 
+        }
+
+        #contact-form input,
+        #contact-form textarea {
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid var(--color-background-light);
+            background-color: rgba(255,255,255,0.1);
+            color: var(--color-text-light);
+            font-size: 1rem;
+        }
+        #contact-form input::placeholder,
+        #contact-form textarea::placeholder {
+            color: var(--color-background-light);
+            opacity: 0.7;
+        }
+
+
+        #contact-form button {
+            background-color: var(--color-accent);
+            color: var(--color-background-dark);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #contact-form button:hover {
+            background-color: #FFFFFF;
+        }
+        
+        .scroll-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--color-text-light);
+            z-index: 100;
+            animation: bounce 2s infinite;
+            opacity: 0.7;
+            text-align: center;
+        }
+        .scroll-indicator span { display: block; }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-10px); }
+            60% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            h2 { font-size: 1.8rem; }
+            p, .description { font-size: 1rem; }
+            .content-overlay { padding: 20px; margin: 10px; }
+            .cta-buttons button { padding: 12px 24px; font-size: 0.9rem; }
+            #experiments .experiments-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="three-canvas"></canvas>
+    <div id="main-container">
+        <section id="home" class="page-section active">
+            <div class="content-overlay">
+                <h1> Regenai: Intelligence in Service of Life</h1>
+                <p class="description">We are a product studio, discovery lab and field journal. Your partner in regenerative momentum: learn from ecological intelligence, make it real, see results</p>
+                <div class="cta-buttons">
+                    <button id="schedule-btn">Schedule a Conversation</button>
+                    <button id="tools-btn" class="secondary">Try Our Tools</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="page-section">
+            <div class="content-overlay">
+                <h2>Innovation in Motion</h2>
+                <p class="description">We deploy tools, mentor teams and design workflows with AI and human creativity at heart helping organisations identify hidden patterns and blind spots that traditional consulting frameworks miss.</p>
+            </div>
+        </section>
+
+        <section id="experiments" class="page-section">
+            <div class="content-overlay">
+                <h2>Active Experiments</h2>
+                <p class="description">Intelligence emerging from practice.</p>
+                <div class="experiments-grid">
+                    <div class="experiment-item">
+                        <h3>Resilia</h3>
+                        <p>Organizational AI that reveals strategic possibilities invisible to extractive thinking.</p>
+                        <a href="#try-resilia">Try Resilia →</a>
+                    </div>
+                    <div class="experiment-item">
+                        <h3>Resonant</h3>
+                        <p>Stakeholder alignment platform generating futures that seemed impossible separately.</p>
+                        <a href="#try-resonant">Try Resonant →</a>
+                    </div>
+                    <div class="experiment-item">
+                        <h3>Current</h3>
+                        <p>Contemplative AI exploring the boundary between individual and collective consciousness.</p>
+                        <a href="#try-current">Try Current →</a>
+                    </div>
+                    <div class="experiment-item">
+                        <h3>Grow</h3>
+                        <p>Distributed knowledge system where food security emerges from community intelligence.</p>
+                        <a href="#learn-grow">Learn More →</a>
+                    </div>
+                    <div class="experiment-item">
+                        <h3>Wildlight</h3>
+                        <p>Ecosystem restoration planner using AI to model regenerative landscape futures.</p>
+                        <a href="#learn-wildlight">Learn More →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="page-section">
+            <div class="content-overlay">
+                <h2>Let's Connect</h2>
+                <form id="contact-form">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
+                    <button type="submit">Send Message</button>
+                </form>
+            </div>
+        </section>
+    </div>
+    
+    <div class="scroll-indicator">
+        <span>Scroll Down</span>
+        <span>↓</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('.page-section');
+            const canvas = document.getElementById('three-canvas');
+            let currentSectionIndex = 0;
+            let isAnimating = false;
+            let scenes = [];
+            let camera, renderer, clock;
+            
+            let mouse = new THREE.Vector2();
+            let raycaster = new THREE.Raycaster();
+            let isDraggingHomeObject = false;
+            let homeObjectTargetPosition = new THREE.Vector3();
+            // let homeObjectInitialZ = 0; // This variable was set but not used. Removed.
+
+            const sceneConfigs = [
+                { 
+                    backgroundColor: new THREE.Color("#210468"),
+                    init: (scene) => {
+                        const cubeTextureLoader = new THREE.CubeTextureLoader();
+                        const environmentMap = cubeTextureLoader.setPath('https://threejs.org/examples/textures/cube/Park3Med/')
+                            .load(['px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg']);
+                        scene.environment = environmentMap;
+
+                        const geometry = new THREE.SphereGeometry(1.5, 64, 32); 
+
+                        const material = new THREE.MeshPhysicalMaterial({ 
+                            color: 0xffffff, 
+                            metalness: 0.1,  
+                            roughness: 0.05, 
+                            transmission: 1.0, 
+                            transparent: true,
+                            ior: 1.5,        
+                            thickness: 1.5,    
+                            envMap: environmentMap, 
+                            envMapIntensity: 1.2
+                        });
+                        const mesh = new THREE.Mesh(geometry, material);
+                        
+                        mesh.scale.set(1, 1, 1); 
+
+                        mesh.name = "homeObject";
+                        scene.add(mesh);
+                        // homeObjectInitialZ was set here using mesh.position.z but was not used later.
+                        
+                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                        scene.add(ambientLight);
+                        const pointLight = new THREE.PointLight("#48C0D1", 0.8, 150); 
+                        pointLight.position.set(5, 8, 7);
+                        scene.add(pointLight);
+                        const pointLight2 = new THREE.PointLight("#25F6A3", 0.7, 150); 
+                        pointLight2.position.set(-5, -6, 5);
+                        scene.add(pointLight2);
+                    },
+                    animate: (scene, time, deltaTime, scrollProps) => {
+                        const obj = scene.getObjectByName("homeObject");
+                        if (obj) {
+                            obj.rotation.x += deltaTime * 0.05;
+                            obj.rotation.y += deltaTime * 0.07;
+
+                            const pulseScale = 1.0 + Math.sin(time * 1.5) * 0.05; 
+                            obj.scale.set(pulseScale, pulseScale, pulseScale); 
+
+                            if(scrollProps) {
+                                // obj.rotation.z = scrollProps.progress * Math.PI * 0.1;
+                            }
+
+                            if (isDraggingHomeObject) {
+                                obj.position.lerp(homeObjectTargetPosition, 0.1);
+                            }
+                        }
+                    }
+                },
+                { 
+                    backgroundColor: new THREE.Color("#48C0D1"),
+                    init: (scene) => {
+                        const group = new THREE.Group();
+                        group.name = "aboutGroup";
+                        const baseGeometry = new THREE.IcosahedronGeometry(0.3, 0); 
+                        const material = new THREE.MeshPhongMaterial({ 
+                            color: "#210468", 
+                            emissive: "#E0D9D6", 
+                            emissiveIntensity:0.2, 
+                            shininess: 60,
+                            flatShading: true
+                        });
+                        for (let i = 0; i < 8; i++) { 
+                            const mesh = new THREE.Mesh(baseGeometry, material);
+                            const scaleFactor = Math.random() * 0.5 + 0.8;
+                            mesh.scale.set(scaleFactor,scaleFactor,scaleFactor);
+                            mesh.position.set(
+                                (Math.random() - 0.5) * 4,
+                                (Math.random() - 0.5) * 4,
+                                (Math.random() - 0.5) * 4 -1 
+                            );
+                            mesh.userData.initialRotation = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                            mesh.rotation.copy(mesh.userData.initialRotation);
+                            group.add(mesh);
+                        }
+                        scene.add(group);
+                        const ambientLight = new THREE.AmbientLight("#E0D9D6", 0.5);
+                        scene.add(ambientLight);
+                        const directionalLight = new THREE.DirectionalLight("#FFFFFF", 0.7);
+                        directionalLight.position.set(1, 2, 1.5);
+                        scene.add(directionalLight);
+                    },
+                    animate: (scene, time, deltaTime, scrollProps) => {
+                        const group = scene.getObjectByName("aboutGroup");
+                        if (group) {
+                            group.rotation.y += deltaTime * 0.15;
+                            group.children.forEach((child, i) => {
+                                child.rotation.x += deltaTime * (0.1 + i*0.01) * (i%2 === 0 ? 1 : -1);
+                                child.rotation.z += deltaTime * (0.08 + i*0.01) * (i%2 === 0 ? -1 : 1);
+                                if(scrollProps) child.position.y += Math.sin(time * 0.5 + i + scrollProps.progress * 5) * 0.01;
+                            });
+                        }
+                    }
+                },
+                { 
+                    backgroundColor: new THREE.Color("#25F6A3"),
+                    init: (scene) => {
+                        const group = new THREE.Group();
+                        group.name = "experimentsGroup";
+                        const boxGeo = new THREE.BoxGeometry(0.6,0.6,0.6);
+                        for(let i = 0; i < 10; i++){
+                             const material = new THREE.MeshStandardMaterial({ 
+                                 color: new THREE.Color().setHSL(Math.random(), 0.6, 0.5), 
+                                 roughness:0.4,
+                                 metalness: 0.1
+                                });
+                             const mesh = new THREE.Mesh(boxGeo, material);
+                             mesh.position.set((Math.random()-0.5)*5, (Math.random()-0.5)*5, (Math.random()-0.5)*5 - 2.5);
+                             mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                             mesh.userData.spinSpeed = (Math.random()-0.5) * 0.5;
+                             group.add(mesh);
+                        }
+                        scene.add(group);
+                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                        scene.add(ambientLight);
+                        const pointLight = new THREE.PointLight(0xffffff, 0.7, 60);
+                        pointLight.position.set(0, 3, 4);
+                        scene.add(pointLight);
+                    },
+                    animate: (scene, time, deltaTime, scrollProps) => {
+                        const group = scene.getObjectByName("experimentsGroup");
+                        if(group){
+                            group.rotation.x += deltaTime * 0.03;
+                            group.rotation.y += deltaTime * 0.06;
+                            group.children.forEach(child => {
+                                child.rotation.x += child.userData.spinSpeed * deltaTime;
+                                child.rotation.y += child.userData.spinSpeed * 0.5 * deltaTime;
+                            });
+                             if(scrollProps) group.position.z = scrollProps.progress * 2 -1;
+                        }
+                    }
+                },
+                { 
+                    backgroundColor: new THREE.Color("#E0D9D6"),
+                    init: (scene) => {
+                        const particlesGeometry = new THREE.BufferGeometry();
+                        const particlesCnt = 7000; 
+                        const posArray = new Float32Array(particlesCnt * 3);
+                        const velocites = new Float32Array(particlesCnt);
+                        for (let i = 0; i < particlesCnt * 3; i++) {
+                            posArray[i] = (Math.random() - 0.5) * 12; 
+                        }
+                         for (let i = 0; i < particlesCnt; i++) {
+                            velocites[i] = (Math.random() -0.5) * 0.002 + 0.001;
+                        }
+                        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+                        particlesGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocites, 1));
+                        const particlesMaterial = new THREE.PointsMaterial({
+                            size: 0.025,
+                            color: "#210468",
+                            transparent: true,
+                            opacity: 0.7,
+                            blending: THREE.AdditiveBlending
+                        });
+                        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+                        particleSystem.name = "contactParticles";
+                        scene.add(particleSystem);
+                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); 
+                        scene.add(ambientLight);
+                        const directionalLight = new THREE.DirectionalLight("#48C0D1", 0.8);
+                        directionalLight.position.set(1,1,3);
+                        scene.add(directionalLight);
+                    },
+                    animate: (scene, time, deltaTime, scrollProps) => {
+                        const particles = scene.getObjectByName("contactParticles");
+                        if (particles) {
+                            particles.rotation.y += deltaTime * 0.03;
+                            const positions = particles.geometry.attributes.position.array;
+                            const velocities = particles.geometry.attributes.velocity.array;
+                            for (let i = 0; i < positions.length; i += 3) {
+                                positions[i+1] += velocities[i/3]; 
+                                if(positions[i+1] > 6) positions[i+1] = -6; 
+                                if(scrollProps) {
+                                    positions[i] += Math.sin(time + positions[i+2]) * 0.001 * (scrollProps.progress - 0.5) * 5;
+                                }
+                            }
+                            particles.geometry.attributes.position.needsUpdate = true;
+                        }
+                    }
+                }
+            ];
+
+            function initThree() {
+                clock = new THREE.Clock();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.z = 5;
+
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+                
+                sceneConfigs.forEach(config => {
+                    const scene = new THREE.Scene();
+                    if (config.init) config.init(scene);
+                    scenes.push(scene);
+                });
+                
+                if (scenes.length > 0 && sceneConfigs[currentSectionIndex].backgroundColor) {
+                     renderer.setClearColor(sceneConfigs[currentSectionIndex].backgroundColor, 1);
+                }
+
+                canvas.addEventListener('mousedown', onCanvasMouseDown, false);
+                canvas.addEventListener('mousemove', onCanvasMouseMove, false);
+                window.addEventListener('mouseup', onCanvasMouseUp, false); 
+
+                animate();
+            }
+            
+            function onCanvasMouseDown(event) {
+                if (currentSectionIndex === 0) { 
+                    isDraggingHomeObject = true;
+                    updateMouseAndRaycast(event);
+                }
+            }
+
+            function onCanvasMouseMove(event) {
+                if (isDraggingHomeObject && currentSectionIndex === 0) {
+                    updateMouseAndRaycast(event);
+                }
+            }
+            
+            function updateMouseAndRaycast(event) {
+                event.preventDefault();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                
+                const homeObject = scenes[0].getObjectByName("homeObject");
+                if (homeObject) {
+                    const planeNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion).normalize().negate();
+                    const planeConstant = homeObject.getWorldPosition(new THREE.Vector3()).dot(planeNormal);
+                    const plane = new THREE.Plane(planeNormal, planeConstant);
+                    
+                    raycaster.ray.intersectPlane(plane, homeObjectTargetPosition);
+                }
+            }
+
+            function onCanvasMouseUp(event) {
+                isDraggingHomeObject = false;
+            }
+
+            function updateSectionVisuals(newIndex, oldIndex) {
+                if (oldIndex >=0 && oldIndex < sections.length) {
+                    sections[oldIndex].classList.remove('active');
+                    sections[oldIndex].classList.add('previous');
+                }
+                sections[newIndex].classList.remove('previous');
+                sections[newIndex].classList.add('active');
+
+                const targetColor = sceneConfigs[newIndex].backgroundColor || new THREE.Color(0x000000);
+                const currentColor = new THREE.Color(); 
+                renderer.getClearColor(currentColor); 
+
+                gsap.to(currentColor, {
+                    r: targetColor.r,
+                    g: targetColor.g,
+                    b: targetColor.b,
+                    duration: 1.2, 
+                    ease: 'power2.inOut',
+                    onUpdate: () => {
+                        renderer.setClearColor(currentColor, renderer.getClearAlpha());
+                    }
+                });
+
+                gsap.to(camera.position, {
+                    z: newIndex === 0 ? 5 : (newIndex === 2 ? 5.5 : 4.5), 
+                    x: (newIndex % 2 === 0) ? 0 : (newIndex === 1 ? -0.5 : 0.5), 
+                    y: (newIndex * 0.1), 
+                    duration: 1.5, 
+                    ease: 'expo.inOut' 
+                });
+                
+                gsap.to(camera.rotation, {
+                    x: newIndex === 1 ? -0.05 : 0, 
+                    y: (newIndex * 0.05 * (newIndex % 2 === 0 ? 1: -1)), 
+                    z: 0,
+                    duration: 1.5,
+                    ease: 'expo.inOut',
+                    onComplete: () => { isAnimating = false; } 
+                });
+            }
+            
+            function changeSection(direction) {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                const oldIndex = currentSectionIndex;
+                currentSectionIndex += direction;
+
+                if (currentSectionIndex < 0) currentSectionIndex = 0; 
+                else if (currentSectionIndex >= sections.length) currentSectionIndex = sections.length - 1; 
+
+                if (oldIndex === currentSectionIndex && ( (direction > 0 && oldIndex === sections.length -1) || (direction < 0 && oldIndex === 0) ) ) {
+                    isAnimating = false; 
+                    return;
+                }
+                
+                updateSectionVisuals(currentSectionIndex, oldIndex);
+                updateScrollIndicator();
+            }
+            
+            function updateScrollIndicator() {
+                const scrollIndicator = document.querySelector('.scroll-indicator');
+                const scrollText = scrollIndicator.querySelector('span:first-child');
+                const scrollArrow = scrollIndicator.querySelector('span:last-child');
+
+                if (!scrollText || !scrollArrow) return;
+                scrollIndicator.style.display = 'block'; 
+
+                if (currentSectionIndex === 0 && sections.length > 1) {
+                    scrollText.textContent = "Scroll Down";
+                    scrollArrow.textContent = "↓";
+                } else if (currentSectionIndex === sections.length - 1 && sections.length > 1) {
+                    scrollText.textContent = "Scroll Up";
+                    scrollArrow.textContent = "↑";
+                } else if (sections.length <= 1) {
+                     scrollIndicator.style.display = 'none'; 
+                } else {
+                    scrollText.textContent = "Scroll";
+                    scrollArrow.textContent = "↕";
+                }
+            }
+
+            let lastWheelTime = Date.now(); 
+            const wheelDebounce = 200; 
+
+            window.addEventListener('wheel', (event) => {
+                const now = Date.now();
+                if (isAnimating || now - lastWheelTime < wheelDebounce ) return;
+                lastWheelTime = now;
+                
+                if (event.deltaY > 0) { 
+                    changeSection(1);
+                } else { 
+                    changeSection(-1);
+                }
+            }, { passive: true }); 
+
+            let touchStartY = 0;
+            const touchThreshold = 30; 
+
+            window.addEventListener('touchstart', (event) => {
+                if(isAnimating) return; 
+                touchStartY = event.changedTouches[0].screenY;
+            }, { passive: true });
+
+            window.addEventListener('touchend', (event) => {
+                if (isAnimating) return;
+                let touchEndY = event.changedTouches[0].screenY;
+                const deltaY = touchEndY - touchStartY;
+
+                if (Math.abs(deltaY) > touchThreshold) {
+                    if (deltaY < 0) { 
+                        changeSection(1);
+                    } else { 
+                        changeSection(-1);
+                    }
+                }
+            }, { passive: true });
+            
+            window.addEventListener('keydown', (event) => {
+                if (isAnimating) return;
+                if (event.key === 'ArrowDown' || event.key === 'PageDown') {
+                    event.preventDefault(); 
+                    changeSection(1);
+                } else if (event.key === 'ArrowUp' || event.key === 'PageUp') {
+                    event.preventDefault(); 
+                    changeSection(-1);
+                } else if (event.key === 'Home') {
+                    event.preventDefault();
+                    if (currentSectionIndex !== 0) {
+                        isAnimating = true;
+                        updateSectionVisuals(0, currentSectionIndex);
+                        currentSectionIndex = 0;
+                        updateScrollIndicator();
+                    }
+                } else if (event.key === 'End') {
+                    event.preventDefault();
+                    if (currentSectionIndex !== sections.length -1 ){
+                        isAnimating = true;
+                        updateSectionVisuals(sections.length-1, currentSectionIndex);
+                        currentSectionIndex = sections.length -1;
+                        updateScrollIndicator();
+                    }
+                }
+            });
+
+            function animate() { 
+                requestAnimationFrame(animate);
+                
+                const elapsedTime = clock.getElapsedTime();
+                const deltaTime = clock.getDelta();
+
+                let scrollProgress = isAnimating ? 0.5 : 1;
+                const scrollProps = { progress: scrollProgress, direction: 0 };
+
+                if (scenes[currentSectionIndex] && sceneConfigs[currentSectionIndex].animate) {
+                    sceneConfigs[currentSectionIndex].animate(scenes[currentSectionIndex], elapsedTime, deltaTime, scrollProps);
+                }
+
+                camera.position.z += Math.sin(elapsedTime * 0.3) * 0.0003; 
+
+                if(scenes[currentSectionIndex]) {
+                    renderer.render(scenes[currentSectionIndex], camera);
+                }
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            }
+            window.addEventListener('resize', onWindowResize);
+
+            document.getElementById('schedule-btn').addEventListener('click', () => {
+                alert('Schedule a Conversation: Action Placeholder');
+            });
+            document.getElementById('tools-btn').addEventListener('click', () => {
+                const experimentsIndex = Array.from(sections).findIndex(s => s.id === 'experiments');
+                if (experimentsIndex !== -1 && experimentsIndex !== currentSectionIndex && !isAnimating) {
+                    isAnimating = true;
+                    updateSectionVisuals(experimentsIndex, currentSectionIndex);
+                    currentSectionIndex = experimentsIndex; 
+                    updateScrollIndicator();
+                }
+            });
+            document.getElementById('contact-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Thank you for your message! (This is a demo)');
+                this.reset();
+            });
+
+            initThree();
+            updateScrollIndicator();
+            
+             if (scenes.length > 0 && sceneConfigs[0].backgroundColor) {
+                 renderer.setClearColor(sceneConfigs[0].backgroundColor, 1);
+             }
+             if (scenes[0]) { 
+                renderer.render(scenes[0], camera); 
+             }
+        });
+    </script>
+</body>
+</html>
